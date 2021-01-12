@@ -43,6 +43,9 @@
 
 /* Private variables ---------------------------------------------------------*/
 ADC_HandleTypeDef hadc1;
+uint16_t PomiarADC;
+float Vsense;
+float temperature;
 
 /* USER CODE BEGIN PV */
 
@@ -89,7 +92,11 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_ADC1_Init();
   /* USER CODE BEGIN 2 */
-
+  HAL_ADC_Start(&hadc1);
+  const float V25 = 0.76; //[Volt}
+  const float Avg_slope = 0.0025; //[Volt/C]
+  const float Vsupply = 3.0; //[Volts]
+  const float ADCResolution = 4095.0; //2^12 - 1
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -97,7 +104,14 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
+	  if(HAL_ADC_PollForConversion(&hadc1,10) == HAL_OK)
+	  {
+		  PomiarADC = HAL_ADC_GetValue(&hadc1);
+		  Vsense = Vsupply / ADCResolution * PomiarADC; //Volt na przedzia³ke razy zmierzona wartosc
+		  temperature = 25 + (Vsense - V25) / Avg_slope; //[C] RM0383 p.226
 
+		  HAL_ADC_Start(&hadc1);
+	  }
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
@@ -161,8 +175,8 @@ static void MX_ADC1_Init(void)
   /** Configure the global features of the ADC (Clock, Resolution, Data Alignment and number of conversion) 
   */
   hadc1.Instance = ADC1;
-  hadc1.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV8;
-  hadc1.Init.Resolution = ADC_RESOLUTION_12B;
+  hadc1.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV8; //multiplication of number of cycles
+  hadc1.Init.Resolution = ADC_RESOLUTION_12B; //15 cycles
   hadc1.Init.ScanConvMode = DISABLE;
   hadc1.Init.ContinuousConvMode = DISABLE;
   hadc1.Init.DiscontinuousConvMode = DISABLE;
@@ -181,7 +195,7 @@ static void MX_ADC1_Init(void)
   sConfig.Channel = ADC_CHANNEL_TEMPSENSOR;
   sConfig.Rank = 1;
   sConfig.SamplingTime = ADC_SAMPLETIME_480CYCLES;
-  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
+  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK) //Single measurement is (480 + 15)cycles * Prescaler = 485 cycles * 8 = 3880 cycles // 1 cycle is 1 / 16Mhz, so t = 3800 cycles * 1/16000000 s/cycle = 242.5 us
   {
     Error_Handler();
   }
