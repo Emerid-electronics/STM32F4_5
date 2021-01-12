@@ -43,7 +43,14 @@
 
 /* Private variables ---------------------------------------------------------*/
 ADC_HandleTypeDef hadc1;
+uint16_t PomiarADC;
+float Vsense;
+float Temperature;
 
+const float V25 = 0.76; // [Volts]
+const float Avg_slope = 0.0025; //[Volts/degree]
+const float SupplyVoltage = 3.0; // [Volts]
+const float ADCResolution = 4096.0;
 /* USER CODE BEGIN PV */
 
 /* USER CODE END PV */
@@ -51,7 +58,7 @@ ADC_HandleTypeDef hadc1;
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_ADC1_Init(void);
-
+void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -90,7 +97,7 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_ADC1_Init();
   /* USER CODE BEGIN 2 */
-
+  HAL_ADC_Start_IT(&hadc1);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -193,7 +200,11 @@ static void MX_ADC1_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-
+void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc) {
+	PomiarADC = HAL_ADC_GetValue(&hadc1);
+	Vsense = (PomiarADC / (ADCResolution - 1)) * SupplyVoltage;
+	Temperature = 25 + ((Vsense - V25) / Avg_slope);
+}
 /* USER CODE END 4 */
 
 /**
