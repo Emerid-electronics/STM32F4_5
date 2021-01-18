@@ -47,6 +47,7 @@ DMA_HandleTypeDef hdma_adc1;
 
 /* USER CODE BEGIN PV */
 uint16_t dane_ADC[3]; // [0] -temp // [1] - Vx // [2] - Vy
+uint8_t inv_SW = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -55,7 +56,7 @@ static void MX_GPIO_Init(void);
 static void MX_DMA_Init(void);
 static void MX_ADC1_Init(void);
 /* USER CODE BEGIN PFP */
-
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -94,28 +95,41 @@ int main(void)
   MX_DMA_Init();
   MX_ADC1_Init();
   /* USER CODE BEGIN 2 */
-  HAL_ADC_Start_DMA(&hadc1,dane_ADC,3);
+  HAL_ADC_Start_DMA(&hadc1, dane_ADC, 3);
   /* USER CODE END 2 */
 
 
   while (1)
   {
-		if (dane_ADC[1] > 3000) //0.75 * 4095 = 3000+ (Vx - R)
-			HAL_GPIO_WritePin(LED_RED_GPIO_Port, LED_RED_Pin, GPIO_PIN_SET);
-		else
+		if (dane_ADC[1] > 3000) { //0.75 * 4095 = 3000+ Vx
+			HAL_GPIO_WritePin(LED_RED_GPIO_Port, LED_RED_Pin,
+					(GPIO_PIN_SET && !inv_SW)||(GPIO_PIN_RESET && inv_SW)); //a~b + ~ab, gdzie a = SET, b = inv_SW
+			HAL_GPIO_WritePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin,
+					(GPIO_PIN_RESET && !inv_SW)||(GPIO_PIN_SET && inv_SW)); //a~b + ~ab, gdzie a = RESET, b = inv_SW
+		} else if (dane_ADC[1] < 1000) { //0.25 * 4095 = 1000
+			HAL_GPIO_WritePin(LED_RED_GPIO_Port, LED_RED_Pin,
+					(GPIO_PIN_RESET && !inv_SW)||(GPIO_PIN_SET && inv_SW));
+			HAL_GPIO_WritePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin,
+					(GPIO_PIN_SET && !inv_SW)||(GPIO_PIN_RESET && inv_SW));
+		} else {
 			HAL_GPIO_WritePin(LED_RED_GPIO_Port, LED_RED_Pin, GPIO_PIN_RESET);
-		if (dane_ADC[1] < 1000) //0.25 * 4095 = 1000 (Vx - L)
-			HAL_GPIO_WritePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin, GPIO_PIN_SET);
-		else
 			HAL_GPIO_WritePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin, GPIO_PIN_RESET);
-		if (dane_ADC[2] < 1000) //(Vy - U)
-			HAL_GPIO_WritePin(LED_ORANGE_GPIO_Port, LED_ORANGE_Pin, GPIO_PIN_SET);
-		else
+		}
+
+		if (dane_ADC[2] < 1000) { //Vy
+			HAL_GPIO_WritePin(LED_ORANGE_GPIO_Port, LED_ORANGE_Pin,
+					(GPIO_PIN_SET && !inv_SW)||(GPIO_PIN_RESET && inv_SW));
+			HAL_GPIO_WritePin(LED_BLUE_GPIO_Port, LED_BLUE_Pin,
+					(GPIO_PIN_RESET && !inv_SW)||(GPIO_PIN_SET && inv_SW));
+		} else if (dane_ADC[2] > 3000) {
+			HAL_GPIO_WritePin(LED_ORANGE_GPIO_Port, LED_ORANGE_Pin,
+					(GPIO_PIN_RESET && !inv_SW)||(GPIO_PIN_SET && inv_SW));
+			HAL_GPIO_WritePin(LED_BLUE_GPIO_Port, LED_BLUE_Pin,
+					(GPIO_PIN_SET && !inv_SW)||(GPIO_PIN_RESET && inv_SW));
+		} else {
+			HAL_GPIO_WritePin(LED_BLUE_GPIO_Port, LED_BLUE_Pin, GPIO_PIN_RESET);
 			HAL_GPIO_WritePin(LED_ORANGE_GPIO_Port, LED_ORANGE_Pin, GPIO_PIN_RESET);
-		if (dane_ADC[2] > 3000) //(Vy - D)
-			HAL_GPIO_WritePin(LED_BLUE_GPIO_Port, LED_BLUE_Pin, GPIO_PIN_SET);
-		else
-			HAL_GPIO_WritePin(LED_BLUE_GPIO_Port, LED_BLUE_Pin,	GPIO_PIN_RESET);
+		}
 
   }
 
@@ -285,7 +299,10 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
+	if(GPIO_Pin == SW_Pin)
+		inv_SW = (inv_SW + 1) % 2;
+}
 /* USER CODE END 4 */
 
 /**
