@@ -107,8 +107,16 @@ int main(void)
 
   while (1)
   {
-		if (temp_calc(dane_ADC[0]) > 30.0)
+		if (temp_calc(dane_ADC[0]) > 30.0){
 			alarm_flag = 1;
+			HAL_GPIO_WritePin(GPIOD, LED_BLUE_Pin | LED_GREEN_Pin | LED_ORANGE_Pin | LED_RED_Pin, GPIO_PIN_SET);
+		}
+
+		while(alarm_flag){
+			HAL_GPIO_TogglePin(GPIOD, LED_BLUE_Pin | LED_GREEN_Pin | LED_ORANGE_Pin | LED_RED_Pin);
+			temp_calc(dane_ADC[0]);
+			HAL_Delay(333);
+		}
 
 		if (dane_ADC[1] > 3000) { //0.75 * 4095 = 3000+ Vx
 			HAL_GPIO_WritePin(LED_RED_GPIO_Port, LED_RED_Pin,
@@ -309,6 +317,8 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE BEGIN 4 */
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
+	if(GPIO_Pin == BUTTON_USER_Pin)
+		alarm_flag = 0;
 	if(GPIO_Pin == SW_Pin)
 		inv_SW = (inv_SW + 1) % 2;
 }
