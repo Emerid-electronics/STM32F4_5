@@ -46,7 +46,7 @@ ADC_HandleTypeDef hadc1;
 DMA_HandleTypeDef hdma_adc1;
 
 /* USER CODE BEGIN PV */
-
+uint16_t dane_ADC[3]; // [0] -temp // [1] - Vx // [2] - Vy
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -94,18 +94,31 @@ int main(void)
   MX_DMA_Init();
   MX_ADC1_Init();
   /* USER CODE BEGIN 2 */
-
+  HAL_ADC_Start_DMA(&hadc1,dane_ADC,3);
   /* USER CODE END 2 */
 
-  /* Infinite loop */
-  /* USER CODE BEGIN WHILE */
+
   while (1)
   {
-    /* USER CODE END WHILE */
+		if (dane_ADC[1] > 3000) //0.75 * 4095 = 3000+ (Vx - R)
+			HAL_GPIO_WritePin(LED_RED_GPIO_Port, LED_RED_Pin, GPIO_PIN_SET);
+		else
+			HAL_GPIO_WritePin(LED_RED_GPIO_Port, LED_RED_Pin, GPIO_PIN_RESET);
+		if (dane_ADC[1] < 1000) //0.25 * 4095 = 1000 (Vx - L)
+			HAL_GPIO_WritePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin, GPIO_PIN_SET);
+		else
+			HAL_GPIO_WritePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin, GPIO_PIN_RESET);
+		if (dane_ADC[2] < 1000) //(Vy - U)
+			HAL_GPIO_WritePin(LED_ORANGE_GPIO_Port, LED_ORANGE_Pin, GPIO_PIN_SET);
+		else
+			HAL_GPIO_WritePin(LED_ORANGE_GPIO_Port, LED_ORANGE_Pin, GPIO_PIN_RESET);
+		if (dane_ADC[2] > 3000) //(Vy - D)
+			HAL_GPIO_WritePin(LED_BLUE_GPIO_Port, LED_BLUE_Pin, GPIO_PIN_SET);
+		else
+			HAL_GPIO_WritePin(LED_BLUE_GPIO_Port, LED_BLUE_Pin,	GPIO_PIN_RESET);
 
-    /* USER CODE BEGIN 3 */
   }
-  /* USER CODE END 3 */
+
 }
 
 /**
