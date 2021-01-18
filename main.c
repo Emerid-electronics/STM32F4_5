@@ -48,6 +48,10 @@ DMA_HandleTypeDef hdma_adc1;
 /* USER CODE BEGIN PV */
 uint16_t dane_ADC[3]; // [0] -temp // [1] - Vx // [2] - Vy
 uint8_t inv_SW = 0;
+uint8_t alarm_flag = 0;
+
+float Vsense;
+float Temperature;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -57,6 +61,7 @@ static void MX_DMA_Init(void);
 static void MX_ADC1_Init(void);
 /* USER CODE BEGIN PFP */
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin);
+float temp_calc(uint16_t ADC_temperature);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -96,11 +101,15 @@ int main(void)
   MX_ADC1_Init();
   /* USER CODE BEGIN 2 */
   HAL_ADC_Start_DMA(&hadc1, dane_ADC, 3);
+
   /* USER CODE END 2 */
 
 
   while (1)
   {
+		if (temp_calc(dane_ADC[0]) > 30.0)
+			alarm_flag = 1;
+
 		if (dane_ADC[1] > 3000) { //0.75 * 4095 = 3000+ Vx
 			HAL_GPIO_WritePin(LED_RED_GPIO_Port, LED_RED_Pin,
 					(GPIO_PIN_SET && !inv_SW)||(GPIO_PIN_RESET && inv_SW)); //a~b + ~ab, gdzie a = SET, b = inv_SW
@@ -302,6 +311,22 @@ static void MX_GPIO_Init(void)
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
 	if(GPIO_Pin == SW_Pin)
 		inv_SW = (inv_SW + 1) % 2;
+}
+
+float temp_calc(uint16_t ADC_temperature_measured) {
+	//float Vsense;
+	//float Temperature;
+
+	const float V25 = 0.76; // [Volts]
+	const float Avg_slope = 0.0025; //[Volts/degree]
+	const float SupplyVoltage = 3.0; // [Volts]
+	const float ADCResolution = 4096.0;
+
+	Vsense = (ADC_temperature_measured / (ADCResolution - 1)) * SupplyVoltage;
+	Temperature = 25 + ((Vsense - V25) / Avg_slope);
+
+	return Temperature;
+
 }
 /* USER CODE END 4 */
 
