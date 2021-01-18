@@ -49,6 +49,7 @@ DMA_HandleTypeDef hdma_adc1;
 uint16_t dane_ADC[3]; // [0] -temp // [1] - Vx // [2] - Vy
 uint8_t inv_SW = 0;
 uint8_t alarm_flag = 0;
+uint8_t alarm_reset_flag = 0;
 
 float Vsense;
 float Temperature;
@@ -107,12 +108,18 @@ int main(void)
 
   while (1)
   {
-		if (temp_calc(dane_ADC[0]) > 30.0){
+		if (temp_calc(dane_ADC[0]) < 30.0){
+			alarm_flag = 0;
+			alarm_reset_flag = 0;
+		}
+		else {
 			alarm_flag = 1;
-			HAL_GPIO_WritePin(GPIOD, LED_BLUE_Pin | LED_GREEN_Pin | LED_ORANGE_Pin | LED_RED_Pin, GPIO_PIN_SET);
+			HAL_GPIO_WritePin(GPIOD,
+					LED_BLUE_Pin | LED_GREEN_Pin | LED_ORANGE_Pin | LED_RED_Pin,
+					GPIO_PIN_RESET);
 		}
 
-		while(alarm_flag){
+		while(alarm_flag && !alarm_reset_flag){
 			HAL_GPIO_TogglePin(GPIOD, LED_BLUE_Pin | LED_GREEN_Pin | LED_ORANGE_Pin | LED_RED_Pin);
 			temp_calc(dane_ADC[0]);
 			HAL_Delay(333);
@@ -318,7 +325,8 @@ static void MX_GPIO_Init(void)
 /* USER CODE BEGIN 4 */
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
 	if(GPIO_Pin == BUTTON_USER_Pin)
-		alarm_flag = 0;
+		alarm_reset_flag = 1;
+
 	if(GPIO_Pin == SW_Pin)
 		inv_SW = (inv_SW + 1) % 2;
 }
